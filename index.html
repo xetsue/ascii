@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXECII</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --frame-color: #ffffff;
+            --text-color: #ffffff;
+            --button-bg: #111111;
+            --button-text: #ffffff;
+            --settings-bg: #000000;
+            --settings-outline: #555555;
+            --slider-track: #555555;
+            --slider-thumb: #ffffff;
+            --checkbox-color: #333333;
+            --frame-radius: 5px;
+            --button-radius: 5px;
+            --settings-radius: 3px;
+            --font-family: 'Monospace', monospace;
+            --font-size: 14px;
+            --text-align: center;
+            --in-frame-ui-scale: 1;
+            --number-input-bg: var(--settings-bg);
+            --number-input-outline-color: var(--settings-outline);
+            --number-input-outline-radius: 3px;
+            --frame-custom-size: 400px;
+            --frame-custom-min-size: 300px;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .header #settings-button {
+            margin-left: auto;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            flex-grow: 1;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .left-panel-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90vmin;
+            flex-shrink: 0;
+        }
+
+        .frame {
+            border: 1.6px solid var(--frame-color);
+            border-radius: var(--frame-radius);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            resize: both;
+            aspect-ratio: 1 / 1;
+            width: var(--frame-custom-size, 90vmin);
+            height: var(--frame-custom-size, 90vmin);
+            min-width: var(--frame-custom-min-size);
+            min-height: var(--frame-custom-min-size);
+            max-width: 100%;
+            max-height: 90vh;
+        }
+
+        .frame.fullscreen-active {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            resize: none !important;
+            z-index: 9999 !important;
+            background-color: var(--bg-color) !important;
+        }
+
+        .ascii-art {
+            font-family: var(--font-family);
+            font-size: var(--font-size);
+            text-align: var(--text-align);
+            white-space: pre;
+            padding: 10px;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            box-sizing: border-box;
+            transform: none !important;
+        }
+
+        .ascii-art.fullscreen {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: auto !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+        }
+
+        .action-buttons,
+        .zoom-controls,
+        .fullscreen-bottom-left-controls {
+            position: absolute;
+            z-index: 10001;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+
+        .action-buttons {
+            top: 5px;
+            left: 5px;
+            display: flex;
+            gap: 3px;
+            transform: scale(var(--in-frame-ui-scale));
+            transform-origin: top left;
+        }
+
+        .zoom-controls {
+            bottom: 5px;
+            right: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 3px;
+            transform: scale(var(--in-frame-ui-scale));
+            transform-origin: bottom right;
+        }
+
+        .fullscreen-bottom-left-controls {
+            bottom: 5px;
+            left: 5px;
+            display: none;
+            transform: scale(var(--in-frame-ui-scale));
+            transform-origin: bottom left;
+        }
+
+        .frame.ui-hidden .action-buttons,
+        .frame.ui-hidden .zoom-controls,
+        .frame.ui-hidden .fullscreen-bottom-left-controls {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .frame.ui-hidden .fullscreen-bottom-left-controls #hide-ui-button {
+            opacity: 1;
+            pointer-events: auto;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .frame.ui-hidden .fullscreen-bottom-left-controls:hover #hide-ui-button {
+            opacity: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid white;
+            color: white;
+        }
+
+        .frame.hidden {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: flex-start;
+            width: 100%;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            border: 1px solid var(--frame-color);
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            border-radius: var(--button-radius);
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+        
+        .settings-button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .settings-button-group button {
+            flex-grow: 1;
+        }
+
+        .action-buttons button,
+        .zoom-controls label,
+        .zoom-controls input[type="range"],
+        .fullscreen-bottom-left-controls button {
+            font-size: 11px;
+            padding: 3px 6px;
+            border-radius: 3px;
+        }
+        #zoom-slider {
+            width: 60px;
+            height: 3px;
+        }
+
+        #settings-panel {
+            background-color: var(--settings-bg);
+            border: 1px solid var(--settings-outline);
+            border-radius: var(--settings-radius);
+            padding: 15px;
+            z-index: 10002;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+            position: fixed;
+            top: 50px;
+            right: 8px;
+            width: 300px;
+            max-width: 90vw;
+            user-select: none;
+        }
+
+        #settings-panel input, #settings-panel select {
+            user-select: text;
+        }
+
+        #advanced-settings-panel {
+            background-color: var(--settings-bg);
+            border: 1px solid var(--settings-outline);
+            border-radius: var(--settings-radius);
+            padding: 0;
+            z-index: 10002;
+            max-height: 80vh;
+            overflow: hidden;
+            box-sizing: border-box;
+            position: relative;
+            margin-top: 20px;
+            max-width: 90vw;
+            display: flex;
+            flex-direction: column;
+            --header-height: 60px;
+            --tab-bar-height: 40px;
+            user-select: none;
+        }
+
+        #advanced-settings-panel input, #advanced-settings-panel select {
+            user-select: text;
+        }
+
+        .settings-header {
+            background-color: var(--settings-bg);
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            border-bottom: 1px solid var(--settings-outline);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: var(--header-height);
+            box-sizing: border-box;
+        }
+
+        .settings-header h3 {
+            margin: 0;
+        }
+        
+        .theme-toggle-header-btn {
+            background: none;
+            border: 1px solid var(--settings-outline);
+            color: var(--text-color);
+            padding: 4px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .theme-toggle-header-btn:hover {
+             background-color: var(--settings-outline);
+        }
+        
+        .tab-bar {
+            display: flex;
+            border-bottom: 1px solid var(--settings-outline);
+            background-color: var(--settings-bg);
+            height: var(--tab-bar-height);
+            box-sizing: border-box;
+        }
+        .tab-link {
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 10px 15px;
+            cursor: pointer;
+            color: var(--text-color);
+            opacity: 0.7;
+            font-family: var(--font-family);
+            font-size: 14px;
+            margin-bottom: -1px;
+        }
+        .tab-link:hover {
+            opacity: 1;
+        }
+        .tab-link.active {
+            opacity: 1;
+            border-bottom-color: var(--frame-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        .settings-content-scrollable {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            max-height: calc(80vh - var(--header-height) - var(--tab-bar-height));
+            box-sizing: border-box;
+        }
+
+        .drag-handle {
+            position: static;
+            order: -1;
+            margin-right: 10px;
+            cursor: move;
+            font-size: 20px;
+            color: var(--settings-outline);
+            z-index: 10;
+            display: none;
+        }
+
+        .drag-handle:hover {
+            color: var(--frame-color);
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+        }
+
+        .setting-group h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .color-input-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .color-input-group label {
+            margin-bottom: 0;
+        }
+        
+        .color-input-group input[type="color"] {
+            margin-bottom: 0;
+            width: 60px;
+            padding: 1px 2px;
+            height: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input[type="color"],
+        input[type="text"],
+        select {
+            background-color: var(--number-input-bg);
+            border: 1px solid var(--number-input-outline-color);
+            color: var(--text-color);
+            padding: 1px;
+            margin-bottom: 5px;
+            width: calc(100% - 12px);
+            border-radius: var(--number-input-outline-radius);
+        }
+
+        input[type="number"] {
+            background-color: var(--number-input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--number-input-outline-color);
+            border-radius: var(--number-input-outline-radius);
+            padding: 3px 5px;
+            box-sizing: border-box;
+            width: calc(100% - 12px);
+            margin-bottom: 5px;
+        }
+
+        .slider-input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .slider-input-group label {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .slider-input-group input[type="range"] {
+            flex-grow: 1;
+            width: auto;
+            margin-bottom: 0;
+        }
+
+        .slider-input-group input[type="number"] {
+            width: 60px;
+            margin-bottom: 0;
+            text-align: center;
+            padding: 3px;
+        }
+
+        input[type="range"] {
+            width: 40%;
+            -webkit-appearance: none;
+            height: 3px;
+            background: var(--slider-track);
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--slider-thumb);
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            accent-color: var(--checkbox-color);
+        }
+
+        #hide-frame-ui-button,
+        #swap-panels-button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            border: 1px solid var(--frame-color);
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            border-radius: var(--button-radius);
+        }
+
+        #swap-panels-button {
+            display: none;
+        }
+
+        .main-container.side-by-side-layout {
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 20px;
+            position: relative;
+            padding: 20px;
+        }
+
+        .main-container.side-by-side-layout .left-panel-wrapper {
+            flex: 1;
+            min-width: 350px;
+            max-width: 50vw;
+            align-items: flex-start;
+        }
+
+        .main-container.side-by-side-layout .frame {
+            width: var(--frame-custom-size, 70vh);
+            height: var(--frame-custom-size, 70vh);
+            min-height: var(--frame-custom-min-size, 400px);
+            max-height: 80vh;
+            min-width: var(--frame-custom-min-size, 300px);
+            max-width: 100%;
+        }
+
+        .main-container.side-by-side-layout .controls {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .main-container.side-by-side-layout #advanced-settings-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 40vw;
+            height: auto;
+            max-height: 90vh;
+            margin-top: 0;
+            resize: both;
+            transform: translate3d(0, 0, 0);
+        }
+
+        .main-container.side-by-side-layout #advanced-settings-panel .drag-handle {
+            display: block !important;
+        }
+
+        .main-container.swapped .left-panel-wrapper {
+            order: 2;
+        }
+        .main-container.swapped #advanced-settings-panel {
+            order: 1;
+        }
+
+        .main-container.side-by-side-layout #swap-panels-button {
+            display: inline-block;
+        }
+
+        @media (max-width: 767px), (max-width: 991px) and (orientation: portrait) {
+            .main-container {
+                padding: 10px;
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+
+            .frame {
+                height: var(--frame-custom-size, 70vmin);
+                width: var(--frame-custom-size, 70vmin);
+            }
+            .controls {
+                justify-content: flex-start;
+            }
+
+            #advanced-settings-panel {
+                width: 95vmin;
+                max-width: 500px;
+                max-height: 80vh;
+                position: static;
+                margin-top: 20px;
+                resize: none;
+                transform: none;
+            }
+
+            #advanced-settings-panel .drag-handle {
+                display: none !important;
+            }
+
+            .main-container.side-by-side-layout {
+                flex-direction: column;
+                gap: 15px;
+                padding: 10px;
+                align-items: center;
+                justify-content: flex-start;
+            }
+
+            .main-container.side-by-side-layout .left-panel-wrapper,
+            .main-container.side-by-side-layout #advanced-settings-panel {
+                width: 95vw;
+                max-width: 500px;
+                min-width: unset;
+                flex: unset;
+            }
+
+            .main-container.side-by-side-layout #advanced-settings-panel {
+                resize: both;
+            }
+
+            .main-container.side-by-side-layout #advanced-settings-panel .drag-handle {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button id="layout-button">Fit Layout</button> <button id="settings-button">Settings</button>
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel-wrapper">
+            <div class="frame">
+                <div class="action-buttons">
+                    <button id="skip-animation">⛬</button>
+                    <button id="copy-button">⛶</button>
+                    <button id="fullscreen-button">Full</button>
+                </div>
+                <div class="zoom-controls">
+                    <label for="zoom-slider">[</label>
+                    <input type="range" id="zoom-slider" min="2" max="30" step="1" value="14">
+                    <label>]</label>
+                </div>
+                <div class="fullscreen-bottom-left-controls" style="display: none;">
+                    <button id="hide-ui-button">Hide</button>
+                </div>
+                <div id="ascii-art" class="ascii-art"></div>
+            </div>
+            <div class="controls">
+                <button id="upload-button">Load Image</button>
+                <button id="clear-button">Clear</button>
+                <button id="reset-button">Reset</button>
+                <button id="export-button">Save</button>
+                <div class="export-options" style="display: none;">
+                    <button id="export-txt">TXT</button>
+                    <button id="export-png">PNG</button>
+                    <button id="export-png-mono">PNG (Mono)</button>
+                </div>
+                <button id="advanced-settings-button">Edit</button>
+                <button id="hide-frame-ui-button">⦸</button>
+                <button id="swap-panels-button" style= "display:none"></button>
+            </div>
+        </div>
+        <div id="advanced-settings-panel" style="display: none;">
+            <div class="settings-header">
+                <div id="drag-handle" class="drag-handle">✥</div>
+                <h3>Settings</h3>
+                <button id="theme-toggle-button" class="theme-toggle-header-btn">月</button>
+            </div>
+            <div class="tab-bar">
+                <button class="tab-link active" data-tab="image">Image</button>
+                <button class="tab-link" data-tab="text">Text</button>
+                <button class="tab-link" data-tab="animation">Animation</button>
+            </div>
+            <div class="settings-content-scrollable">
+                <div id="tab-image" class="tab-content active">
+                    <div class="setting-group">
+                        <h4>Image Processing</h4>
+                        <label>Width: <input type="number" id="width" min="20" max="500" value="100"></label>
+                        <label>Height: <input type="number" id="height" min="20" max="500" value="100"></label>
+                        <label>Color: <input type="checkbox" id="color"></label>
+                        <label>Negative: <input type="checkbox" id="negative"></label>
+
+                        <div class="slider-input-group">
+                            <label for="contrast">Contrast:</label>
+                            <input type="range" id="contrast" min="0.1" max="3" step="0.1" value="1">
+                            <input type="number" id="contrast-num" min="0.1" max="3" step="0.1" value="1" class="slider-value-input">
+                        </div>
+                        <div class="slider-input-group">
+                            <label for="brightness">Brightness:</label>
+                            <input type="range" id="brightness" min="0.1" max="3" step="0.1" value="1">
+                            <input type="number" id="brightness-num" min="0.1" max="3" step="0.1" value="1" class="slider-value-input">
+                        </div>
+                        <div class="slider-input-group">
+                            <label for="sharpness">Sharpness:</label>
+                            <input type="range" id="sharpness" min="0" max="2" step="0.1" value="1">
+                            <input type="number" id="sharpness-num" min="0" max="2" step="0.1" value="1" class="slider-value-input">
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <h4>Color Adjustments</h4>
+                        <div class="slider-input-group">
+                            <label for="saturation">Saturation:</label>
+                            <input type="range" id="saturation" min="0" max="2" step="0.1" value="1">
+                            <input type="number" id="saturation-num" min="0" max="2" step="0.1" value="1" class="slider-value-input">
+                        </div>
+                        <div class="slider-input-group">
+                            <label for="temperature">Temperature:</label>
+                            <input type="range" id="temperature" min="-100" max="100" value="0">
+                            <input type="number" id="temperature-num" min="-100" max="100" value="0" class="slider-value-input">
+                        </div>
+                        <div class="slider-input-group">
+                            <label for="vibrance">Vibrance:</label>
+                            <input type="range" id="vibrance" min="0" max="2" step="0.1" value="1">
+                            <input type="number" id="vibrance-num" min="0" max="2" step="0.1" value="1" class="slider-value-input">
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <h4>Tonal Adjustments</h4>
+                        <div class="slider-input-group">
+                            <label for="highlights">Highlights:</label>
+                            <input type="range" id="highlights" min="-100" max="100" value="0">
+                            <input type="number" id="highlights-num" min="-100" max="100" value="0" class="slider-value-input">
+                        </div>
+                        <div class="slider-input-group">
+                            <label for="white-point">White Point:</label>
+                            <input type="range" id="white-point" min="0" max="255" value="255">
+                            <input type="number" id="white-point-num" min="0" max="255" value="255" class="slider-value-input">
+                        </div>
+                        <div class="slider-input-group">
+                            <label for="black-point">Black Point:</label>
+                            <input type="range" id="black-point" min="0" max="255" value="0">
+                            <input type="number" id="black-point-num" min="0" max="255" value="0" class="slider-value-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-text" class="tab-content">
+                    <div class="setting-group">
+                        <h4>ASCII Characters</h4>
+                        <label>Custom Characters: <input type="text" id="chars" value="@%#*+=-:. "></label>
+                    </div>
+
+                    <div class="setting-group">
+                        <h4>Text Layout</h4>
+                        <label>Line Height: <input type="number" id="line-height" min="0.1" max="3" step="0.1" value="0.5"></label>
+                        <label>Letter Spacing: <input type="number" id="letter-spacing" min="-2" max="5" value="0.5"></label>
+                    </div>
+                </div>
+                
+                <div id="tab-animation" class="tab-content">
+                    <div class="setting-group">
+                        <h4>Animation</h4>
+                        <label>Animation: <input type="checkbox" id="animation"></label>
+                        <label>Animation Type: <select id="animation-type">
+                            <option value="typing-ltr">Typing (Left to Right)</option>
+                            <option value="typing-rtl">Typing (Right to Left)</option>
+                            <option value="typing-btt">Typing (Bottom to Top)</option>
+                            <option value="typing-center-out">Typing (Center Out)</option>
+                            <option value="random-everywhere">Random (Everywhere)</option>
+                            <option value="random-ttb">Random (Top to Bottom)</option>
+                            <option value="random-btt">Random (Bottom to Top)</option>
+                            <option value="random-center-out">Random (Center Out)</option>
+                            <option value="matrix">Matrix</option>
+                            <option value="fade-in">Fade In</option>
+                            <option value="wave">Wave</option>
+                        </select> </label>
+                        <div class="slider-input-group">
+                            <label for="animation-speed">Speed:</label>
+                            <input type="range" id="animation-speed" min="1" max="10" value="5">
+                            <input type="number" id="animation-speed-num" min="1" max="10" value="5" class="slider-value-input">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="settings-panel" style="display: none;">
+        <h3>General Settings</h3>
+        <div class="setting-group">
+            <h4>Colors</h4>
+            <div class="color-input-group"><label for="bg-color">Background:</label><input type="color" id="bg-color" value="#000000"></div>
+            <div class="color-input-group"><label for="frame-color">Frame:</label><input type="color" id="frame-color" value="#ffffff"></div>
+            <div class="color-input-group"><label for="text-color">Text:</label><input type="color" id="text-color" value="#ffffff"></div>
+            <div class="color-input-group"><label for="button-bg">Button BG:</label><input type="color" id="button-bg" value="#111111"></div>
+            <div class="color-input-group"><label for="button-text">Button Text:</label><input type="color" id="button-text" value="#ffffff"></div>
+            <div class="color-input-group"><label for="settings-bg">Settings BG:</label><input type="color" id="settings-bg" value="#222222"></div>
+            <div class="color-input-group"><label for="settings-outline">Settings Outline:</label><input type="color" id="settings-outline" value="#555555"></div>
+            <div class="color-input-group"><label for="slider-track">Slider Track:</label><input type="color" id="slider-track" value="#555555"></div>
+            <div class="color-input-group"><label for="slider-thumb">Slider Thumb:</label><input type="color" id="slider-thumb" value="#ffffff"></div>
+            <div class="color-input-group"><label for="checkbox-color">Checkbox:</label><input type="color" id="checkbox-color" value="#333333"></div>
+        </div>
+        <div class="setting-group">
+            <h4>Input Styles</h4>
+            <div class="color-input-group"><label for="number-input-bg">Input BG:</label><input type="color" id="number-input-bg" value="#000000"></div>
+            <div class="color-input-group"><label for="number-input-outline-color">Input Outline:</label><input type="color" id="number-input-outline-color" value="#555555"></div>
+            <label>Input Outline Radius: <input type="number" id="number-input-outline-radius" min="0" max="20" value="3"></label>
+        </div>
+        <div class="setting-group">
+            <h4>Border Radius</h4>
+            <label>Frame: <input type="number" id="frame-radius" min="0" max="50" value="5"></label>
+            <label>Buttons: <input type="number" id="button-radius" min="0" max="50" value="5"></label>
+            <label>Settings UI: <input type="number" id="settings-radius" min="0" max="50" value="3"></label>
+        </div>
+        <div class="setting-group">
+            <h4>Font</h4>
+            <label>Font Family: <select id="font-family">
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="'Arial', sans-serif">Arial</option>
+                <option value="'Georgia', serif">Georgia</option>
+                <option value="'Impact', sans-serif">Impact</option>
+                <option value="'Monospace', monospace" selected>Monospace</option>
+            </select> </label>
+            <label>Font Size: <input type="number" id="font-size" min="6" max="24" value="14"></label>
+            <label>Text Align: <select id="text-align">
+                <option value="left">Left</option>
+                <option value="center" selected>Center</option>
+                <option value="right">Right</option>
+            </select> </label>
+        </div>
+        <div class="setting-group">
+            <h4>Frame Size</h4>
+            <label>Custom Size (px): <input type="number" id="frame-custom-size" min="200" max="1000" value="400"></label>
+            <label>Min Size (px): <input type="number" id="frame-custom-min-size" min="200" max="500" value="300"></label>
+            <label>In-frame UI Scale: <input type="range" id="in-frame-ui-scale" min="0.5" max="1.5" step="0.1" value="1"></label>
+        </div>
+        <div class="settings-button-group">
+            <button id="reset-theme-button">Reset Colors</button>
+            <button id="apply-settings-button">Apply Manual</button>
+        </div>
+    </div>
+
+    <input type="file" id="image-input" accept="image/*" style="display: none;">
+    <footer style="z-index: 5; text-align: center; margin-top: 20px; color: #555; padding: 10px; position: relative;"><span id="revealTrigger" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; cursor: pointer; z-index: 15; opacity: 0; pointer-events: none;"></span><a href="https://xetsue.github.io/" target="_blank" rel="noopener noreferrer" id="targetLink" style="color: inherit; text-decoration: none; opacity: 1; pointer-events: auto; transition: opacity 0.5s ease-in-out; z-index: 10;">xetsue.github.io</a></footer><script>document.addEventListener('DOMContentLoaded', function() { const trigger = document.getElementById('revealTrigger'); const link = document.getElementById('targetLink'); const hideLink = () => { link.style.opacity = '0'; link.style.pointerEvents = 'none'; trigger.style.opacity = '1'; trigger.style.pointerEvents = 'auto'; }; setTimeout(hideLink, 1500); trigger.addEventListener('click', function() { link.style.opacity = '1'; link.style.pointerEvents = 'auto'; trigger.style.opacity = '0'; trigger.style.pointerEvents = 'none'; setTimeout(hideLink, 2000); }); });</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Element Constants ---
+            const mainContainer = document.querySelector('.main-container');
+            const frame = document.querySelector('.frame');
+            const asciiArt = document.getElementById('ascii-art');
+            const settingsButton = document.getElementById('settings-button');
+            const advancedSettingsButton = document.getElementById('advanced-settings-button');
+            const layoutButton = document.getElementById('layout-button');
+            const uploadButton = document.getElementById('upload-button');
+            const clearButton = document.getElementById('clear-button');
+            const resetButton = document.getElementById('reset-button');
+            const exportButton = document.getElementById('export-button');
+            const exportTxtBtn = document.getElementById('export-txt');
+            const exportPngBtn = document.getElementById('export-png');
+            const exportPngMonoBtn = document.getElementById('export-png-mono');
+            const exportOptions = document.querySelector('.export-options');
+            const swapPanelsButton = document.getElementById('swap-panels-button');
+            const applySettingsBtn = document.getElementById('apply-settings-button');
+            const skipAnimationBtn = document.getElementById('skip-animation');
+            const copyButton = document.getElementById('copy-button');
+            const fullscreenButton = document.getElementById('fullscreen-button');
+            const hideUiButton = document.getElementById('hide-ui-button');
+            const hideFrameUiButton = document.getElementById('hide-frame-ui-button');
+            const settingsPanel = document.getElementById('settings-panel');
+            const advancedSettingsPanel = document.getElementById('advanced-settings-panel');
+            const dragHandle = document.getElementById('drag-handle');
+            const fullscreenBottomLeftControls = document.querySelector('.fullscreen-bottom-left-controls');
+            const imageInput = document.getElementById('image-input');
+            const zoomSlider = document.getElementById('zoom-slider');
+            const asciiSettingsInputs = document.querySelectorAll('#advanced-settings-panel input, #advanced-settings-panel select');
+            const generalSettingsInputs = document.querySelectorAll('#settings-panel input, #settings-panel select');
+            const fontSizeInput = document.getElementById('font-size');
+            const themeToggleButton = document.getElementById('theme-toggle-button');
+            const resetThemeButton = document.getElementById('reset-theme-button');
+
+            // --- State Variables ---
+            let currentAsciiArt = '';
+            let animationInterval = null;
+            let isAnimating = false;
+            let originalImage = null;
+            let isAdvancedPanelManuallyHidden = false;
+            const ASCII_CHARS_DEFAULT = '@%#*+=-:. ';
+            let isKeyboardOpen = false;
+            let isManualLayoutEnabled = false;
+            let isDarkTheme = true;
+            let dragState = { active: false, currentX: 0, currentY: 0, initialX: 0, initialY: 0, xOffset: 0, yOffset: 0 };
+            
+            const themes = {
+                dark: {
+                    '--bg-color': '#000000', '--frame-color': '#ffffff', '--text-color': '#ffffff',
+                    '--button-bg': '#111111', '--button-text': '#ffffff', '--settings-bg': '#0a0a0a',
+                    '--settings-outline': '#555555', '--slider-track': '#555555', '--slider-thumb': '#ffffff',
+                    '--checkbox-color': '#333333', '--number-input-bg': '#000000', '--number-input-outline-color': '#555555'
+                },
+                light: {
+                    '--bg-color': '#f0f0f0', '--frame-color': '#000000', '--text-color': '#000000',
+                    '--button-bg': '#ffffff', '--button-text': '#000000', '--settings-bg': '#ffffff',
+                    '--settings-outline': '#cccccc', '--slider-track': '#cccccc', '--slider-thumb': '#000000',
+                    '--checkbox-color': '#aaaaaa', '--number-input-bg': '#ffffff', '--number-input-outline-color': '#cccccc'
+                }
+            };
+
+            // =================================================================
+            // EVENT LISTENERS
+            // =================================================================
+
+            // --- Main Controls ---
+            settingsButton.addEventListener('click', () => togglePanel(settingsPanel));
+            advancedSettingsButton.addEventListener('click', () => togglePanel(advancedSettingsPanel));
+            layoutButton.addEventListener('click', toggleManualLayout);
+            uploadButton.addEventListener('click', () => imageInput.click());
+            imageInput.addEventListener('change', handleFileUpload);
+            clearButton.addEventListener('click', clearArt);
+            resetButton.addEventListener('click', factoryReset);
+            exportButton.addEventListener('click', () => exportOptions.style.display = exportOptions.style.display === 'none' ? 'flex' : 'none');
+            exportTxtBtn.addEventListener('click', exportAsTxt);
+            exportPngBtn.addEventListener('click', () => exportAsPng(false));
+            exportPngMonoBtn.addEventListener('click', () => exportAsPng(true));
+            applySettingsBtn.addEventListener('click', () => applyGeneralSettings(true));
+            swapPanelsButton.addEventListener('click', () => mainContainer.classList.toggle('swapped'));
+            hideFrameUiButton.addEventListener('click', () => frame.classList.toggle('ui-hidden'));
+            themeToggleButton.addEventListener('click', toggleTheme);
+            resetThemeButton.addEventListener('click', resetTheme);
+
+            // --- In-Frame Controls ---
+            skipAnimationBtn.addEventListener('click', skipCurrentAnimation);
+            copyButton.addEventListener('click', copyAsciiArt);
+            fullscreenButton.addEventListener('click', toggleFullscreen);
+            hideUiButton.addEventListener('click', () => frame.classList.toggle('ui-hidden'));
+            zoomSlider.addEventListener('input', handleZoom);
+
+            // --- Settings Listeners ---
+            asciiSettingsInputs.forEach(input => {
+                input.addEventListener('input', () => { if (originalImage) processImage(); });
+            });
+            fontSizeInput.addEventListener('input', () => {
+                zoomSlider.value = fontSizeInput.value;
+                handleZoom();
+            });
+
+            // --- Slider and Number Input Syncing ---
+            document.querySelectorAll('.slider-input-group').forEach(group => {
+                const slider = group.querySelector('input[type="range"]');
+                const number = group.querySelector('input[type="number"]');
+                if (slider && number) {
+                    slider.addEventListener('input', () => number.value = slider.value);
+                    number.addEventListener('input', () => slider.value = number.value);
+                }
+            });
+            
+            // --- Tabbed settings ---
+            const tabLinks = document.querySelectorAll('.tab-link');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    const tabId = link.getAttribute('data-tab');
+                    tabLinks.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    link.classList.add('active');
+                    document.getElementById('tab-' + tabId).classList.add('active');
+                });
+            });
+
+            // --- Window and Layout Listeners ---
+            window.addEventListener('resize', checkLayout);
+            document.addEventListener('click', closePanelsOnClickOutside);
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    const newIsKeyboardOpen = window.visualViewport.height < window.innerHeight;
+                    if (newIsKeyboardOpen !== isKeyboardOpen) {
+                        isKeyboardOpen = newIsKeyboardOpen;
+                    }
+                });
+            }
+
+            // --- Draggable Panel Listeners ---
+            dragHandle.addEventListener('mousedown', dragStart);
+            dragHandle.addEventListener('touchstart', dragStart);
+
+            // --- Initial Load ---
+            loadSettings();
+            handleZoom();
+            checkLayout();
+
+            // =================================================================
+            // CORE FUNCTIONS
+            // =================================================================
+
+            function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        originalImage = img;
+                        stopAnimation();
+                        asciiArt.innerHTML = 'Processing...';
+                        setTimeout(processImage, 10);
+                    };
+                    img.onerror = () => asciiArt.innerHTML = 'Error: Could not load image.';
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function processImage() {
+                if (!originalImage) return;
+                stopAnimation();
+                const settings = getAsciiSettings();
+                const canvas = document.createElement('canvas');
+                canvas.width = settings.width;
+                canvas.height = settings.height;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                
+                ctx.filter = `contrast(${settings.sharpness * 100}%)`;
+                ctx.drawImage(originalImage, 0, 0, settings.width, settings.height);
+                ctx.filter = 'none';
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+                
+                for (let i = 0; i < pixels.length; i += 4) {
+                    let r = pixels[i], g = pixels[i+1], b = pixels[i+2];
+                    r = (r - 127.5) * settings.contrast + 127.5;
+                    g = (g - 127.5) * settings.contrast + 127.5;
+                    b = (b - 127.5) * settings.contrast + 127.5;
+                    r *= settings.brightness; g *= settings.brightness; b *= settings.brightness;
+                    
+                    if (settings.color) {
+                        const [h, s, v] = rgbToHsv(r, g, b);
+                        const newS = Math.min(1, Math.max(0, s * settings.saturation));
+                        [r, g, b] = hsvToRgb(h, newS, v);
+                        r += settings.temperature; b -= settings.temperature;
+                    }
+                    
+                    let gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+                    if (settings.highlights !== 0) gray += settings.highlights * ((gray / 255) ** 2);
+                    gray = (gray - settings.blackPoint) * (255 / (settings.whitePoint - settings.blackPoint));
+                    
+                    if (settings.negative) {
+                       gray = 255 - gray; r = 255 - r; g = 255 - g; b = 255 - b;
+                    }
+                    
+                    pixels[i] = Math.min(255, Math.max(0, r));
+                    pixels[i+1] = Math.min(255, Math.max(0, g));
+                    pixels[i+2] = Math.min(255, Math.max(0, b));
+                    pixels[i+3] = Math.min(255, Math.max(0, gray));
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                convertToAscii(canvas, settings);
+            }
+
+            function convertToAscii(canvas, settings) {
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const pixels = imageData.data;
+                const charSet = settings.chars.length > 0 ? settings.chars : ASCII_CHARS_DEFAULT;
+                let resultHTML = '';
+                
+                asciiArt.style.fontFamily = document.getElementById('font-family').value;
+                asciiArt.style.lineHeight = settings.lineHeight;
+                asciiArt.style.letterSpacing = `${settings.letterSpacing}px`;
+                asciiArt.style.textAlign = document.getElementById('text-align').value;
+                
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        const i = (y * canvas.width + x) * 4;
+                        const r = pixels[i], g = pixels[i+1], b = pixels[i+2], gray = pixels[i+3];
+                        const charIndex = Math.floor((gray / 255) * (charSet.length - 1));
+                        const char = charSet.charAt(charIndex);
+                        resultHTML += settings.color ? `<span style="color:rgb(${r},${g},${b})">${char}</span>` : char;
+                    }
+                    resultHTML += '\n';
+                }
+                
+                currentAsciiArt = resultHTML;
+                if (settings.animation) {
+                    startAnimation(currentAsciiArt, settings);
+                } else {
+                    asciiArt.innerHTML = currentAsciiArt;
+                }
+            }
+
+            function startAnimation(art, settings) {
+                stopAnimation();
+                isAnimating = true;
+                const speed = 11 - settings.animationSpeed;
+                let frameCount = 0;
+                asciiArt.innerHTML = '';
+                
+                const lines = art.split('\n');
+                const lineCount = lines.length;
+                const charsPerLine = lines[0]?.length || 0;
+                const revealed = Array(lineCount).fill().map(() => Array(charsPerLine).fill(false));
+                let totalRevealed = 0;
+                const totalChars = lineCount * charsPerLine;
+                
+                const renderFrame = () => {
+                    let output = '';
+                    let isDone = true;
+                    
+                    switch(settings.animationType) {
+                        case 'typing-ltr':
+                            for (let y = 0; y < lineCount; y++) {
+                                const line = lines[y];
+                                const charsToShow = Math.min(charsPerLine, Math.floor(frameCount * speed * 0.5));
+                                output += line.substring(0, charsToShow) + '\n';
+                                if (charsToShow < charsPerLine) isDone = false;
+                            }
+                            break;
+                            
+                        case 'typing-rtl':
+                            for (let y = 0; y < lineCount; y++) {
+                                const line = lines[y];
+                                const charsToHide = Math.max(0, charsPerLine - Math.floor(frameCount * speed * 0.5));
+                                output += line.substring(charsToHide) + '\n';
+                                if (charsToHide > 0) isDone = false;
+                            }
+                            break;
+                            
+                        case 'typing-btt':
+                            const linesToShow = Math.min(lineCount, Math.floor(frameCount * speed * 0.5));
+                            output = lines.slice(lineCount - linesToShow).join('\n') + '\n';
+                            if (linesToShow < lineCount) isDone = false;
+                            break;
+                            
+                        case 'typing-center-out':
+                            const centerX = Math.floor(charsPerLine / 2);
+                            const centerY = Math.floor(lineCount / 2);
+                            const radius = Math.floor(frameCount * speed * 0.2);
+                            
+                            for (let y = 0; y < lineCount; y++) {
+                                for (let x = 0; x < charsPerLine; x++) {
+                                    const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                                    if (distance <= radius) {
+                                        output += lines[y][x];
+                                        revealed[y][x] = true;
+                                    } else {
+                                        output += ' ';
+                                    }
+                                }
+                                output += '\n';
+                            }
+                            
+                            isDone = radius >= Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
+                            break;
+                            
+                        case 'random-everywhere':
+                            if (totalRevealed < totalChars) {
+                                const charsToReveal = Math.min(10, totalChars - totalRevealed);
+                                for (let i = 0; i < charsToReveal; i++) {
+                                    let x, y;
+                                    do {
+                                        x = Math.floor(Math.random() * charsPerLine);
+                                        y = Math.floor(Math.random() * lineCount);
+                                    } while (revealed[y][x]);
+                                    
+                                    revealed[y][x] = true;
+                                    totalRevealed++;
+                                }
+                                isDone = false;
+                            }
+                            
+                            for (let y = 0; y < lineCount; y++) {
+                                for (let x = 0; x < charsPerLine; x++) {
+                                    output += revealed[y][x] ? lines[y][x] : ' ';
+                                }
+                                output += '\n';
+                            }
+                            
+                            isDone = totalRevealed >= totalChars;
+                            break;
+                            
+                        case 'random-ttb':
+                            if (totalRevealed < totalChars) {
+                                const charsToReveal = Math.min(10, totalChars - totalRevealed);
+                                for (let i = 0; i < charsToReveal; i++) {
+                                    let x, y;
+                                    do {
+                                        x = Math.floor(Math.random() * charsPerLine);
+                                        y = Math.floor(Math.random() * (lineCount - Math.floor(totalRevealed / charsPerLine)));
+                                    } while (revealed[y][x]);
+                                    
+                                    revealed[y][x] = true;
+                                    totalRevealed++;
+                                }
+                                isDone = false;
+                            }
+                            
+                            for (let y = 0; y < lineCount; y++) {
+                                for (let x = 0; x < charsPerLine; x++) {
+                                    output += revealed[y][x] ? lines[y][x] : ' ';
+                                }
+                                output += '\n';
+                            }
+                            
+                            isDone = totalRevealed >= totalChars;
+                            break;
+                            
+                        case 'random-btt':
+                            if (totalRevealed < totalChars) {
+                                const charsToReveal = Math.min(10, totalChars - totalRevealed);
+                                for (let i = 0; i < charsToReveal; i++) {
+                                    let x, y;
+                                    do {
+                                        x = Math.floor(Math.random() * charsPerLine);
+                                        y = lineCount - 1 - Math.floor(Math.random() * (lineCount - Math.floor(totalRevealed / charsPerLine)));
+                                    } while (revealed[y][x]);
+                                    
+                                    revealed[y][x] = true;
+                                    totalRevealed++;
+                                }
+                                isDone = false;
+                            }
+                            
+                            for (let y = 0; y < lineCount; y++) {
+                                for (let x = 0; x < charsPerLine; x++) {
+                                    output += revealed[y][x] ? lines[y][x] : ' ';
+                                }
+                                output += '\n';
+                            }
+                            
+                            isDone = totalRevealed >= totalChars;
+                            break;
+                            
+                        case 'random-center-out':
+                            if (totalRevealed < totalChars) {
+                                const centerX = Math.floor(charsPerLine / 2);
+                                const centerY = Math.floor(lineCount / 2);
+                                const charsToReveal = Math.min(10, totalChars - totalRevealed);
+                                
+                                for (let i = 0; i < charsToReveal; i++) {
+                                    let minDist = Infinity;
+                                    let bestX = -1, bestY = -1;
+                                    
+                                    for (let y = 0; y < lineCount; y++) {
+                                        for (let x = 0; x < charsPerLine; x++) {
+                                            if (!revealed[y][x]) {
+                                                const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                                                if (dist < minDist) {
+                                                    minDist = dist;
+                                                    bestX = x;
+                                                    bestY = y;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (bestX !== -1 && bestY !== -1) {
+                                        revealed[bestY][bestX] = true;
+                                        totalRevealed++;
+                                    }
+                                }
+                                isDone = false;
+                            }
+                            
+                            for (let y = 0; y < lineCount; y++) {
+                                for (let x = 0; x < charsPerLine; x++) {
+                                    output += revealed[y][x] ? lines[y][x] : ' ';
+                                }
+                                output += '\n';
+                            }
+                            
+                            isDone = totalRevealed >= totalChars;
+                            break;
+                            
+                        case 'matrix':
+                            if (frameCount % 3 === 0) {
+                                if (Math.random() < 0.3) {
+                                    const x = Math.floor(Math.random() * charsPerLine);
+                                    for (let y = 0; y < lineCount; y++) {
+                                        revealed[y][x] = false;
+                                    }
+                                    revealed[0][x] = true;
+                                }
+                                
+                                for (let x = 0; x < charsPerLine; x++) {
+                                    for (let y = lineCount - 1; y >= 0; y--) {
+                                        if (revealed[y][x]) {
+                                            revealed[y][x] = false;
+                                            if (y < lineCount - 1) {
+                                                revealed[y+1][x] = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            for (let y = 0; y < lineCount; y++) {
+                                for (let x = 0; x < charsPerLine; x++) {
+                                    output += revealed[y][x] ? lines[y][x] : ' ';
+                                }
+                                output += '\n';
+                            }
+                            
+                            isDone = false;
+                            break;
+                            
+                        case 'fade-in':
+                            const opacity = Math.min(1, frameCount * speed * 0.01);
+                            if (asciiArt.innerHTML === '') asciiArt.innerHTML = art;
+                            asciiArt.style.opacity = opacity;
+                            if (opacity < 1) isDone = false;
+                            break;
+                            
+                        case 'wave':
+                            const wavePos = (frameCount * speed * 0.1) % (2 * Math.PI);
+                            for (let y = 0; y < lineCount; y++) {
+                                const waveOffset = Math.sin(wavePos + y * 0.3) * 5;
+                                const charsToShow = Math.min(charsPerLine, Math.max(0, Math.floor(charsPerLine/2 + waveOffset)));
+                                output += lines[y].substring(0, charsToShow) + '\n';
+                                if (charsToShow < charsPerLine) isDone = false;
+                            }
+                            break;
+                            
+                        default:
+                            const charCount = Math.floor(frameCount * speed * 5);
+                            output = art.substring(0, charCount);
+                            if (charCount < art.length) isDone = false;
+                            break;
+                    }
+                    
+                    frameCount++;
+                    
+                    if (isDone) {
+                        stopAnimation();
+                        asciiArt.innerHTML = art;
+                        asciiArt.style.opacity = 1;
+                    } else {
+                        if (settings.animationType !== 'fade-in') {
+                            asciiArt.innerHTML = output;
+                        }
+                        animationInterval = requestAnimationFrame(renderFrame);
+                    }
+                };
+                
+                animationInterval = requestAnimationFrame(renderFrame);
+            }
+
+            function stopAnimation() {
+                if (animationInterval) cancelAnimationFrame(animationInterval);
+                animationInterval = null;
+                isAnimating = false;
+            }
+
+            function skipCurrentAnimation() {
+                if (isAnimating) {
+                    stopAnimation();
+                    asciiArt.innerHTML = currentAsciiArt;
+                    asciiArt.style.opacity = 1;
+                }
+            }
+
+            function exportAsTxt() {
+                if (!currentAsciiArt) { alert("Nothing to export."); return; }
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = currentAsciiArt;
+                const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                
+                const blob = new Blob([plainText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; 
+                a.download = `ascii-art.txt`;
+                document.body.appendChild(a); 
+                a.click();
+                document.body.removeChild(a); 
+                URL.revokeObjectURL(url);
+                exportOptions.style.display = 'none';
+            }
+
+            function exportAsPng(monochrome) {
+                if (!currentAsciiArt) {
+                    alert("Nothing to export.");
+                    return;
+                }
+
+                const settings = getAsciiSettings();
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = currentAsciiArt;
+                const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                const lines = plainText.split('\n');
+
+                const fontSize = parseInt(document.getElementById('font-size').value, 10);
+                const fontFamily = document.getElementById('font-family').value;
+                const letterSpacing = settings.letterSpacing;
+                const actualLineHeight = settings.lineHeight * fontSize;
+
+                ctx.font = `${fontSize}px ${fontFamily}`;
+                let maxLineWidth = 0;
+                for (const line of lines) {
+                    let currentLineWidth = 0;
+                    for (const char of line) {
+                        currentLineWidth += ctx.measureText(char).width + letterSpacing;
+                    }
+                    if (currentLineWidth > maxLineWidth) {
+                        maxLineWidth = currentLineWidth;
+                    }
+                }
+
+                canvas.width = maxLineWidth + 40;
+                canvas.height = lines.length * actualLineHeight + 40;
+
+                ctx.fillStyle = document.getElementById('bg-color').value;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = `${fontSize}px ${fontFamily}`;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+
+                const startX = 20;
+                let y = 20;
+                const rawLines = currentAsciiArt.split('\n');
+
+                for (let i = 0; i < lines.length; i++) {
+                    let currentX = startX;
+                    if (monochrome || !settings.color) {
+                        ctx.fillStyle = document.getElementById('text-color').value;
+                        const line = lines[i];
+                        for (const char of line) {
+                            ctx.fillText(char, currentX, y);
+                            currentX += ctx.measureText(char).width + letterSpacing;
+                        }
+                    } else {
+                        const lineDiv = document.createElement('div');
+                        lineDiv.innerHTML = rawLines[i];
+                        const nodes = lineDiv.childNodes;
+
+                        for (const node of nodes) {
+                            const text = node.textContent;
+                            ctx.fillStyle = node.style?.color || document.getElementById('text-color').value;
+
+                            for (const char of text) {
+                                ctx.fillText(char, currentX, y);
+                                currentX += ctx.measureText(char).width + letterSpacing;
+                            }
+                        }
+                    }
+                    y += actualLineHeight;
+                }
+
+                canvas.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ascii-art-${monochrome ? 'mono' : 'color'}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 'image/png');
+
+                exportOptions.style.display = 'none';
+            }
+            
+            function factoryReset() {
+                if (confirm('Are you sure you want to reset all settings? This will clear saved preferences and reload the page.')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+
+            function resetAdvancedSettings() {
+                document.getElementById('width').value = 100;
+                document.getElementById('height').value = 100;
+                document.getElementById('color').checked = false;
+                document.getElementById('negative').checked = false;
+                document.getElementById('contrast').value = 1;
+                document.getElementById('contrast-num').value = 1;
+                document.getElementById('brightness').value = 1;
+                document.getElementById('brightness-num').value = 1;
+                document.getElementById('sharpness').value = 1;
+                document.getElementById('sharpness-num').value = 1;
+                document.getElementById('saturation').value = 1;
+                document.getElementById('saturation-num').value = 1;
+                document.getElementById('temperature').value = 0;
+                document.getElementById('temperature-num').value = 0;
+                document.getElementById('vibrance').value = 1;
+                document.getElementById('vibrance-num').value = 1;
+                document.getElementById('highlights').value = 0;
+                document.getElementById('highlights-num').value = 0;
+                document.getElementById('white-point').value = 255;
+                document.getElementById('white-point-num').value = 255;
+                document.getElementById('black-point').value = 0;
+                document.getElementById('black-point-num').value = 0;
+                document.getElementById('chars').value = '@%#*+=-:. ';
+                document.getElementById('line-height').value = 0.5;
+                document.getElementById('letter-spacing').value = 0.5;
+                document.getElementById('animation').checked = false;
+                document.getElementById('animation-type').value = 'typing-ltr';
+                document.getElementById('animation-speed').value = 5;
+                document.getElementById('animation-speed-num').value = 5;
+
+                if (originalImage) {
+                    processImage();
+                }
+            }
+
+            function getElementValue(id, isCheckbox = false) {
+                 const el = document.getElementById(id);
+                 if (!el) return undefined;
+                 if (isCheckbox) return el.checked;
+                 return (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
+            }
+            
+            function getAsciiSettings() {
+                return {
+                    width: getElementValue('width'), 
+                    height: getElementValue('height'), 
+                    color: getElementValue('color', true),
+                    negative: getElementValue('negative', true), 
+                    contrast: getElementValue('contrast'), 
+                    brightness: getElementValue('brightness'),
+                    saturation: getElementValue('saturation'), 
+                    temperature: getElementValue('temperature'), 
+                    vibrance: getElementValue('vibrance'),
+                    sharpness: getElementValue('sharpness'), 
+                    highlights: getElementValue('highlights'), 
+                    whitePoint: getElementValue('white-point'),
+                    blackPoint: getElementValue('black-point'), 
+                    chars: getElementValue('chars'), 
+                    lineHeight: getElementValue('line-height'),
+                    letterSpacing: getElementValue('letter-spacing'), 
+                    animation: getElementValue('animation', true),
+                    animationType: getElementValue('animation-type'), 
+                    animationSpeed: getElementValue('animation-speed')
+                };
+            }
+            
+            function toggleTheme() {
+                isDarkTheme = !isDarkTheme;
+                applyTheme(isDarkTheme ? themes.dark : themes.light);
+                saveSettings();
+            }
+            
+            function resetTheme() {
+                applyTheme(isDarkTheme ? themes.dark : themes.light);
+                saveSettings();
+            }
+
+            function applyTheme(theme) {
+                const root = document.documentElement;
+                for (const [key, value] of Object.entries(theme)) {
+                    root.style.setProperty(key, value);
+                    const inputId = key.substring(2);
+                    const inputEl = document.getElementById(inputId);
+                    if (inputEl && inputEl.type === 'color') {
+                        inputEl.value = value;
+                    }
+                }
+            }
+            
+            function applyGeneralSettings(save = true) {
+                const root = document.documentElement;
+                generalSettingsInputs.forEach(input => {
+                    const variableName = '--' + input.id;
+                    let value = input.value;
+                    if (input.type === 'number' && !input.id.includes('in-frame-ui-scale')) {
+                        value += 'px';
+                    }
+                    root.style.setProperty(variableName, value);
+                });
+                if (save) saveSettings();
+            }
+
+            function saveSettings() {
+                const settings = {};
+                document.querySelectorAll('input, select').forEach(el => {
+                    if (el.id) settings[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+                });
+                localStorage.setItem('asciiArtGeneratorSettings', JSON.stringify(settings));
+                localStorage.setItem('asciiArtTheme', isDarkTheme ? 'dark' : 'light');
+                saveLayoutState();
+            }
+
+            function saveLayoutState() {
+                localStorage.setItem('isManualLayoutEnabled', isManualLayoutEnabled);
+                localStorage.setItem('mainContainerLayoutClass', mainContainer.classList.contains('side-by-side-layout') ? 'side-by-side-layout' : '');
+            }
+
+            function loadSettings() {
+                const savedTheme = localStorage.getItem('asciiArtTheme');
+                isDarkTheme = (savedTheme === 'light') ? false : true;
+                applyTheme(isDarkTheme ? themes.dark : themes.light);
+                
+                const settings = JSON.parse(localStorage.getItem('asciiArtGeneratorSettings'));
+                if (settings) {
+                    document.querySelectorAll('input, select').forEach(el => {
+                        if (el.id && settings[el.id] !== undefined) {
+                            if (el.type === 'checkbox') el.checked = settings[el.id];
+                            else el.value = settings[el.id];
+                            el.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
+                }
+                
+                applyGeneralSettings(false);
+
+                const savedManualLayout = localStorage.getItem('isManualLayoutEnabled');
+                if (savedManualLayout !== null) {
+                    isManualLayoutEnabled = (savedManualLayout === 'true');
+                }
+
+                const savedLayoutClass = localStorage.getItem('mainContainerLayoutClass');
+                if (savedLayoutClass === 'side-by-side-layout') {
+                    mainContainer.classList.add('side-by-side-layout');
+                    advancedSettingsPanel.style.display = 'block';
+                    settingsPanel.style.display = 'none';
+                    isAdvancedPanelManuallyHidden = false;
+                } else {
+                    mainContainer.classList.remove('side-by-side-layout');
+                }
+            }
+
+            function togglePanel(panelToToggle) {
+                const isAdvancedPanel = panelToToggle.id === 'advanced-settings-panel';
+
+                if (panelToToggle.style.display === 'block') {
+                    panelToToggle.style.display = 'none';
+                    if (isAdvancedPanel) isAdvancedPanelManuallyHidden = true;
+                } else {
+                    panelToToggle.style.display = 'block';
+                    if (isAdvancedPanel) {
+                        settingsPanel.style.display = 'none';
+                        isAdvancedPanelManuallyHidden = false;
+                    } else {
+                        advancedSettingsPanel.style.display = 'none';
+                    }
+                }
+            }
+
+            function closePanelsOnClickOutside(event) {
+                if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+                    return;
+                }
+
+                if (settingsPanel.style.display === 'block' && !settingsPanel.contains(event.target) && event.target !== settingsButton) {
+                    settingsPanel.style.display = 'none';
+                }
+                
+                if (exportOptions.style.display !== 'none' && !exportOptions.contains(event.target) && event.target !== exportButton) {
+                    exportOptions.style.display = 'none';
+                }
+            }
+
+            function toggleManualLayout() {
+                isManualLayoutEnabled = !isManualLayoutEnabled;
+                if (isManualLayoutEnabled) {
+                    mainContainer.classList.add('side-by-side-layout');
+                    advancedSettingsPanel.style.display = 'block';
+                    advancedSettingsPanel.style.transform = 'translate3d(0, 0, 0)';
+                    dragState.xOffset = 0;
+                    dragState.yOffset = 0;
+                    isAdvancedPanelManuallyHidden = false;
+                    settingsPanel.style.display = 'none';
+                } else {
+                    mainContainer.classList.remove('side-by-side-layout');
+                    if (advancedSettingsPanel.style.display === 'block' && !isKeyboardOpen) {
+                         advancedSettingsPanel.style.display = 'none';
+                         isAdvancedPanelManuallyHidden = true;
+                    }
+                    advancedSettingsPanel.style.transform = 'none';
+                    dragState.xOffset = 0;
+                    dragState.yOffset = 0;
+                }
+                saveLayoutState();
+            }
+
+            function checkLayout() {
+                if (isManualLayoutEnabled) {
+                    if (mainContainer.classList.contains('side-by-side-layout')) {
+                        advancedSettingsPanel.style.display = 'block';
+                        settingsPanel.style.display = 'none';
+                    } else {
+                        if (advancedSettingsPanel.style.display === 'block' && !isKeyboardOpen) {
+                            advancedSettingsPanel.style.display = 'none';
+                            isAdvancedPanelManuallyHidden = true;
+                        }
+                    }
+                    return;
+                }
+
+                const shouldBeSideBySideBasedOnViewport = window.innerWidth >= 992 || (window.innerWidth >= 768 && window.matchMedia("(orientation: landscape)").matches);
+
+                if (shouldBeSideBySideBasedOnViewport) {
+                    mainContainer.classList.add('side-by-side-layout');
+                    if (!isAdvancedPanelManuallyHidden) {
+                        advancedSettingsPanel.style.display = 'block';
+                    }
+                    settingsPanel.style.display = 'none';
+                } else {
+                    mainContainer.classList.remove('side-by-side-layout');
+                    if (advancedSettingsPanel.style.display === 'none') {
+                        isAdvancedPanelManuallyHidden = true;
+                    }
+                }
+                if (!mainContainer.classList.contains('side-by-side-layout')) {
+                    advancedSettingsPanel.style.transform = 'none';
+                    dragState.xOffset = 0;
+                    dragState.yOffset = 0;
+                }
+            }
+
+            function toggleFullscreen() {
+                const isFullscreen = frame.classList.toggle('fullscreen-active');
+                
+                if (isFullscreen) {
+                    frame._originalParent = frame.parentNode;
+                    frame._originalNextSibling = frame.nextSibling;
+                    frame._originalPosition = frame.style.position || '';
+                    frame._originalZIndex = frame.style.zIndex || '';
+                    
+                    document.body.appendChild(frame);
+                    
+                    frame.style.position = 'fixed';
+                    frame.style.zIndex = '9999';
+                    frame.style.top = '0';
+                    frame.style.left = '0';
+                    frame.style.width = '100vw';
+                    frame.style.height = '100vh';
+                    frame.style.margin = '0';
+                    frame.style.padding = '0';
+                    frame.style.border = 'none';
+                    frame.style.resize = 'none';
+                    
+                    asciiArt.style.display = 'flex';
+                    asciiArt.style.justifyContent = 'center';
+                    asciiArt.style.alignItems = 'center';
+                    asciiArt.style.width = '100%';
+                    asciiArt.style.height = '100%';
+                    asciiArt.style.overflow = 'auto';
+                    asciiArt.style.padding = '20px';
+                    asciiArt.style.boxSizing = 'border-box';
+                } else {
+                    if (frame._originalParent) {
+                        if (frame._originalNextSibling) {
+                            frame._originalParent.insertBefore(frame, frame._originalNextSibling);
+                        } else {
+                            frame._originalParent.appendChild(frame);
+                        }
+                    }
+                    
+                    frame.style.position = frame._originalPosition;
+                    frame.style.zIndex = frame._originalZIndex;
+                    frame.style.top = '';
+                    frame.style.left = '';
+                    frame.style.width = '';
+                    frame.style.height = '';
+                    frame.style.margin = '';
+                    frame.style.padding = '';
+                    frame.style.border = '';
+                    frame.style.resize = '';
+                    
+                    asciiArt.style.display = '';
+                    asciiArt.style.justifyContent = '';
+                    asciiArt.style.alignItems = '';
+                    asciiArt.style.width = '';
+                    asciiArt.style.height = '';
+                    asciiArt.style.overflow = '';
+                    asciiArt.style.padding = '';
+                    asciiArt.style.boxSizing = '';
+                }
+                
+                asciiArt.classList.toggle('fullscreen', isFullscreen);
+                frame.classList.remove('ui-hidden');
+                fullscreenButton.textContent = isFullscreen ? 'Exit' : 'Full';
+                fullscreenBottomLeftControls.style.display = isFullscreen ? 'flex' : 'none';
+                settingsPanel.style.display = 'none';
+                advancedSettingsPanel.style.display = 'none';
+                exportOptions.style.display = 'none';
+                applyGeneralSettings(false);
+                handleZoom();
+            }
+            
+            function handleZoom() {
+                asciiArt.style.fontSize = `${zoomSlider.value}px`;
+                fontSizeInput.value = zoomSlider.value;
+            }
+
+            function getTranslateXY(elm) {
+                const style = window.getComputedStyle(elm);
+                const matrix = new DOMMatrixReadOnly(style.transform);
+                return { x: matrix.m41, y: matrix.m42 };
+            }
+
+            function dragStart(e) {
+                if (!mainContainer.classList.contains('side-by-side-layout') || advancedSettingsPanel.style.display === 'none') return;
+
+                const currentTransform = getTranslateXY(advancedSettingsPanel);
+                dragState.xOffset = currentTransform.x;
+                dragState.yOffset = currentTransform.y;
+
+                dragState.initialX = e.type === 'touchstart' ? e.touches[0].clientX - dragState.xOffset : e.clientX - dragState.xOffset;
+                dragState.initialY = e.type === 'touchstart' ? e.touches[0].clientY - dragState.yOffset : e.clientY - dragState.yOffset;
+
+                if (e.target === dragHandle) {
+                    dragState.active = true;
+                    document.body.style.userSelect = 'none';
+                    document.body.style.cursor = 'grabbing';
+                    document.addEventListener('mouseup', dragEnd);
+                    document.addEventListener('touchend', dragEnd);
+                    document.addEventListener('mousemove', drag);
+                    document.addEventListener('touchmove', drag);
+                }
+            }
+            
+            function dragEnd(e) {
+                dragState.initialX = dragState.currentX;
+                dragState.initialY = dragState.currentY;
+                dragState.active = false;
+                document.body.style.userSelect = '';
+                document.body.style.cursor = '';
+                document.removeEventListener('mouseup', dragEnd);
+                document.removeEventListener('touchend', dragEnd);
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('touchmove', drag);
+            }
+            
+            function drag(e) {
+                if (dragState.active) {
+                    e.preventDefault();
+                    let clientX, clientY;
+                    if (e.type === 'touchmove') {
+                        clientX = e.touches[0].clientX;
+                        clientY = e.touches[0].clientY;
+                    } else {
+                        clientX = e.clientX;
+                        clientY = e.clientY;
+                    }
+                    dragState.currentX = clientX - dragState.initialX;
+                    dragState.currentY = clientY - dragState.initialY;
+
+                    advancedSettingsPanel.style.transform = `translate3d(${dragState.currentX}px, ${dragState.currentY}px, 0)`;
+                }
+            }
+            
+            function clearArt() {
+                stopAnimation();
+                asciiArt.innerHTML = ''; 
+                currentAsciiArt = '';
+                imageInput.value = ''; 
+                originalImage = null;
+            }
+            
+            function copyAsciiArt() {
+                if (!currentAsciiArt) return;
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = currentAsciiArt;
+                const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                
+                navigator.clipboard.writeText(plainText).then(() => {
+                    copyButton.textContent = 'Copied!';
+                    setTimeout(() => { copyButton.textContent = '⛶'; }, 2000);
+                }).catch(err => console.error('Copy failed', err));
+            }
+            
+            function rgbToHsv(r, g, b) {
+                r /= 255; g /= 255; b /= 255;
+                const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s, v = max; const d = max - min;
+                s = max === 0 ? 0 : d / max;
+                if (max === min) h = 0;
+                else {
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                return [h, s, v];
+            }
+            
+            function hsvToRgb(h, s, v) {
+                let r, g, b;
+                const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+                switch (i % 6) {
+                    case 0: r = v; g = t; b = p; break; case 1: r = q; g = v; b = p; break;
+                    case 2: r = p; g = v; b = t; break; case 3: r = p; g = q; b = v; break;
+                    case 4: r = t; g = p; b = v; break; case 5: r = v; g = p; b = q; break;
+                }
+                return [r * 255, g * 255, b * 255];
+            }
+        });
+    </script>
+</body>
+</html>
